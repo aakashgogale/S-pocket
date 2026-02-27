@@ -1,0 +1,13 @@
+
+==> Authentication 
+    => Register
+    => Login
+    => Logout (token blacklisting)
+    => [OTP based Registeration]
+
+user{
+    fullname,
+    email,
+    password,
+    createdAt
+}
