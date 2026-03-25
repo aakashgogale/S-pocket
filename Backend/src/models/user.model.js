@@ -1,32 +1,53 @@
-
-const { create } = require("domain")
-const mongoose = require("mongoose")
+import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema({
-    fullname: {
-        type : String,
-        required : [true, "Please enter your full name."],
-        trim : true,
-    },
-    emial : {
-        type : String,
-        required : [true, "Please enter an email."],
-        unique: true,
-        lowercase : true,
-        trim: true,
-    },
-    password : {
-        type : String,
-        required: [true, "Please enter a password"],
-        minlength : 8,
-        select : false,
-    },
-    createdAt : {
-        type : Date,
-        default: Date.now
-    }
-})
+  username: {
+    type: String,
+    required: [true, "Please enter your full name"],
+    unique: true
+  },
+  fullName: {
+    type: String
+  },
+  email: {
+    type: String,
+    required: true,
+    unique: true
+  },
+  password: {
+    type: String,
+    required: true
+  },
+  avatar: {
+    type: String
+  },
+  profilePic: {
+    type: String
+  },
+  location: {
+    type: String,
+    default: ""
+  },
+  bio: {
+    type: String,
+    default: ""
+  },
+  role: {
+    type: String,
+    enum: ["user", "admin"],
+    default: "user"
+  },
+  isVerified: {
+    type: Boolean,
+    default: false
+  },
+  isBlocked: {
+    type: Boolean,
+    default: false
+  },
+  blockedAt: {
+    type: Date
+  }
+}, { timestamps: true });
 
-const userModel = mongoose.mongo("users", userSchema)
-
-module.exports = userModel
+export default mongoose.model("User", userSchema);
