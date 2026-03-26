@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 
 let ioInstance;
+const onlineCounts = new Map();
 
 export const initSocket = (io) => {
   ioInstance = io;
@@ -25,9 +26,17 @@ export const initSocket = (io) => {
 
   io.on("connection", (socket) => {
     console.log(`User connected: ${socket.user.id}`);
+    const userId = String(socket.user.id);
+    onlineCounts.set(userId, (onlineCounts.get(userId) || 0) + 1);
 
     socket.on("disconnect", () => {
       console.log("User disconnected");
+      const current = onlineCounts.get(userId) || 0;
+      if (current <= 1) {
+        onlineCounts.delete(userId);
+      } else {
+        onlineCounts.set(userId, current - 1);
+      }
     });
   });
 };
@@ -39,4 +48,8 @@ export const sendThreatAlert = (userId, data) => {
     ioInstance.to(`user-room:${userId}`).emit("threatAlert", data);
   }
   ioInstance.to("admin-room").emit("threatAlert", data);
+};
+
+export const getOnlineUserIds = () => {
+  return new Set(onlineCounts.keys());
 };

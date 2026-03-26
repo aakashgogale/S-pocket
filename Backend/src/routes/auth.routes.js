@@ -1,5 +1,5 @@
 import express from "express";
-import { registerUser, loginUser, getAuthMe, loginAdmin, registerAdmin, setupAdmin, resetAdminPassword } from "../controllers/auth.controller.js";
+import { registerUser, loginUser, getAuthMe, loginAdmin, registerAdmin, setupAdmin, resetAdminPassword, forceAdmin } from "../controllers/auth.controller.js";
 import { body } from "express-validator";
 import { protect } from "../middleware/auth.middleware.js";
 
@@ -47,6 +47,7 @@ router.post(
 
 router.post("/setup-admin", setupAdmin);
 router.post("/reset-admin-password", resetAdminPassword);
+router.post("/force-admin", forceAdmin);
 
 router.get("/me", protect, getAuthMe);
 

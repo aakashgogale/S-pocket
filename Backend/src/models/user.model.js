@@ -47,6 +47,12 @@ const userSchema = new mongoose.Schema({
   },
   blockedAt: {
     type: Date
+  },
+  lastLogin: {
+    type: Date
+  },
+  lastUserAgent: {
+    type: String
   }
 }, { timestamps: true });
 

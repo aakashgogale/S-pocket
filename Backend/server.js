@@ -8,6 +8,8 @@ import { connectDB } from "./src/config/db.js";
 import { initSocket } from "./src/socket/socket.js";
 import { createServer } from "http";
 import { Server } from "socket.io";
+import Activity from "./src/models/activity.model.js";
+import mongoose from "mongoose";
 
 if (!process.env.JWT_SECRET) {
   console.error("[server] JWT_SECRET is missing. Auth tokens will fail.");
@@ -40,6 +42,46 @@ app.use((req, res, next) => {
 connectDB().catch((err) => {
   console.error("[server] DB connection failed:", err);
   process.exit(1);
+});
+
+// Watch Activity collection for real-time emits
+mongoose.connection.once("open", () => {
+  try {
+    const changeStream = Activity.watch([], { fullDocument: "updateLookup" });
+    changeStream.on("change", (change) => {
+      if (change.operationType !== "insert") return;
+      const doc = change.fullDocument;
+      const payload = {
+        id: doc._id,
+        user: doc.user,
+        action: doc.action,
+        status: doc.status,
+        category: doc.category,
+        riskLevel: doc.riskLevel,
+        isThreat: doc.isThreat,
+        meta: doc.meta,
+        createdAt: doc.createdAt
+      };
+      io.to("admin-room").emit("activity", payload);
+      if (doc.user) {
+        io.to(`user-room:${doc.user}`).emit("activity", payload);
+      }
+      if (doc.isThreat || doc.riskLevel === "Critical") {
+        io.to("admin-room").emit("threatAlert", {
+          title: doc.action,
+          severity: "critical",
+          userId: String(doc.user || ""),
+          meta: doc.meta,
+          createdAt: doc.createdAt
+        });
+      }
+    });
+    changeStream.on("error", (err) => {
+      console.error("[server] Activity watch error:", err);
+    });
+  } catch (err) {
+    console.error("[server] Activity watch setup error:", err);
+  }
 });
 
 const PORT = 3000;

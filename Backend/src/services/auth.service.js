@@ -41,7 +41,7 @@ export const registerUserService = async (username, fullName, email, password) =
 /**
  * Login user
  */
-export const loginUserService = async (email, password) => {
+export const loginUserService = async (email, password, meta = {}) => {
   try {
     const user = await User.findOne({ email });
     console.log("[auth.service] User found:", user ? user.email : null);
@@ -63,6 +63,11 @@ export const loginUserService = async (email, password) => {
     }
 
     // Email verification bypassed
+    user.lastLogin = new Date();
+    if (meta.userAgent) {
+      user.lastUserAgent = meta.userAgent;
+    }
+    await user.save();
 
     const token = generateToken(user);
 

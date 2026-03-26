@@ -6,6 +6,7 @@ import { detectThreat } from "../utils/threatDetector.js";
 import { createThreatService } from "../services/threat.service.js";
 import { sendThreatAlert } from "../socket/socket.js";
 import { logActivity } from "../services/activity.service.js";
+import Activity from "../models/activity.model.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -28,9 +29,12 @@ router.post("/upload", protect, upload.single("file"), async (req, res) => {
 
     await logActivity({
       userId: req.user.id,
-      action: `Uploaded file ${req.file.originalname}`,
-      type: "info",
-      io: req.io
+      action: "file_upload",
+      status: "success",
+      category: "File",
+      riskLevel: "Low",
+      ipAddress: req.ip,
+      meta: { filename: req.file.originalname }
     });
 
     // Run threat detection on uploaded file
@@ -83,11 +87,13 @@ router.patch("/:id/rename", protect, async (req, res) => {
     if (String(file.user) !== String(req.user.id)) {
       await logActivity({
         userId: req.user.id,
-        action: `Unauthorized rename attempt on ${file.originalName}`,
-        type: "critical",
+        action: "file_rename_unauthorized",
+        status: "threat",
+        category: "File",
+        riskLevel: "Critical",
+        ipAddress: req.ip,
         isThreat: true,
-        meta: { fileId: file._id },
-        io: req.io
+        meta: { fileId: file._id }
       });
       return res.status(403).json({ msg: "Not allowed" });
     }
@@ -97,10 +103,12 @@ router.patch("/:id/rename", protect, async (req, res) => {
 
     await logActivity({
       userId: req.user.id,
-      action: `Renamed file to ${name}`,
-      type: "info",
-      meta: { fileId: file._id },
-      io: req.io
+      action: "file_rename",
+      status: "success",
+      category: "File",
+      riskLevel: "Low",
+      ipAddress: req.ip,
+      meta: { fileId: file._id, name }
     });
 
     res.json({ success: true, file });
@@ -117,11 +125,13 @@ router.get("/:id/download", protect, async (req, res) => {
     if (String(file.user) !== String(req.user.id)) {
       await logActivity({
         userId: req.user.id,
-        action: `Unauthorized download attempt on ${file.originalName}`,
-        type: "critical",
+        action: "file_download_unauthorized",
+        status: "threat",
+        category: "File",
+        riskLevel: "Critical",
+        ipAddress: req.ip,
         isThreat: true,
-        meta: { fileId: file._id },
-        io: req.io
+        meta: { fileId: file._id }
       });
       return res.status(403).json({ msg: "Not allowed" });
     }
@@ -134,11 +144,13 @@ router.get("/:id/download", protect, async (req, res) => {
     if (userDownloads.length >= 5) {
       await logActivity({
         userId: req.user.id,
-        action: `Download limit exceeded for ${file.originalName}`,
-        type: "critical",
+        action: "file_download_limit_exceeded",
+        status: "threat",
+        category: "File",
+        riskLevel: "Critical",
+        ipAddress: req.ip,
         isThreat: true,
-        meta: { fileId: file._id },
-        io: req.io
+        meta: { fileId: file._id }
       });
       return res.status(429).json({ msg: "Limit Exceeded" });
     }
@@ -149,10 +161,12 @@ router.get("/:id/download", protect, async (req, res) => {
 
     await logActivity({
       userId: req.user.id,
-      action: `Downloaded file ${file.originalName}`,
-      type: "info",
-      meta: { fileId: file._id },
-      io: req.io
+      action: "file_download",
+      status: "success",
+      category: "File",
+      riskLevel: "Low",
+      ipAddress: req.ip,
+      meta: { fileId: file._id }
     });
 
     const filePath = path.join(uploadDir, file.name);
@@ -170,11 +184,13 @@ router.delete("/:id", protect, async (req, res) => {
     if (String(file.user) !== String(req.user.id)) {
       await logActivity({
         userId: req.user.id,
-        action: `Unauthorized delete attempt on ${file.originalName}`,
-        type: "critical",
+        action: "file_delete_unauthorized",
+        status: "threat",
+        category: "File",
+        riskLevel: "Critical",
+        ipAddress: req.ip,
         isThreat: true,
-        meta: { fileId: file._id },
-        io: req.io
+        meta: { fileId: file._id }
       });
       return res.status(403).json({ msg: "Not allowed" });
     }
@@ -187,11 +203,32 @@ router.delete("/:id", protect, async (req, res) => {
     await file.deleteOne();
     await logActivity({
       userId: req.user.id,
-      action: `Deleted file ${file.originalName}`,
-      type: "warning",
-      meta: { fileId: file._id },
-      io: req.io
+      action: "file_delete",
+      status: "success",
+      category: "File",
+      riskLevel: "Moderate",
+      ipAddress: req.ip,
+      meta: { fileId: file._id }
     });
+
+    const since = new Date(Date.now() - 60 * 1000);
+    const deleteCount = await Activity.countDocuments({
+      user: req.user.id,
+      action: "file_delete",
+      createdAt: { $gte: since }
+    });
+    if (deleteCount > 10) {
+      await logActivity({
+        userId: req.user.id,
+        action: "Excessive file deletion detected",
+        status: "threat",
+        category: "File",
+        riskLevel: "Critical",
+        ipAddress: req.ip,
+        isThreat: true,
+        meta: { deleteCount }
+      });
+    }
     res.json({ success: true, msg: "File deleted" });
   } catch (err) {
     console.error("[file.routes] delete error:", err);

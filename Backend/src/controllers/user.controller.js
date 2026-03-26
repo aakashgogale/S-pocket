@@ -35,9 +35,11 @@ export const updateProfile = async (req, res) => {
 
     await logActivity({
       userId: req.user.id,
-      action: "Profile updated",
-      type: "info",
-      io: req.io
+      action: "profile_update",
+      status: "success",
+      category: "System",
+      riskLevel: "Low",
+      ipAddress: req.ip
     });
 
     res.json({ success: true, data: user });
