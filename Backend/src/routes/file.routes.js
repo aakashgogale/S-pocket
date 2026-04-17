@@ -1,43 +1,35 @@
 import express from "express";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import { protect } from "../middleware/auth.middleware.js";
 import { upload } from "../utils/upload.js";
+import { uploadFileAsset, destroyAsset } from "../utils/cloudinary.js";
 import File from "../models/file.model.js";
+import Activity from "../models/activity.model.js";
 import { detectThreat } from "../utils/threatDetector.js";
 import { createThreatService } from "../services/threat.service.js";
 import { sendThreatAlert } from "../socket/socket.js";
 import { logActivity } from "../services/activity.service.js";
-import Activity from "../models/activity.model.js";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
 
 const router = express.Router();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const uploadDir = path.join(__dirname, "..", "..", "uploads");
+const legacyUploadDir = path.join(__dirname, "..", "..", "uploads");
+
+const severityToRisk = {
+  low: "low",
+  medium: "medium",
+  high: "high",
+  critical: "high"
+};
 
 router.post("/upload", protect, upload.single("file"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ msg: "No file uploaded" });
 
-    const newFile = await File.create({
-      name: req.file.filename,
-      originalName: req.file.originalname,
-      type: req.file.mimetype.split('/')[1].toUpperCase(),
-      size: (req.file.size / 1024 / 1024).toFixed(2) + " MB",
-      user: req.user.id
-    });
+    const safePublicId = `${Date.now()}-${req.file.originalname.replace(/\s+/g, "_")}`;
+    const uploadResult = await uploadFileAsset(req.file.buffer, safePublicId);
 
-    await logActivity({
-      userId: req.user.id,
-      action: "file_upload",
-      status: "success",
-      category: "File",
-      riskLevel: "Low",
-      ipAddress: req.ip,
-      meta: { filename: req.file.originalname }
-    });
-
-    // Run threat detection on uploaded file
     const detection = detectThreat({
       event: "file_upload",
       filename: req.file.originalname,
@@ -46,34 +38,65 @@ router.post("/upload", protect, upload.single("file"), async (req, res) => {
       ip: req.ip
     });
 
+    const riskLevel = severityToRisk[detection.threat.severity] || "low";
+
+    const newFile = await File.create({
+      name: req.file.originalname,
+      filename: req.file.originalname,
+      originalName: req.file.originalname,
+      type: req.file.mimetype.split("/")[1]?.toUpperCase() || "UNKNOWN",
+      fileType: req.file.mimetype,
+      mimeType: req.file.mimetype,
+      size: `${(req.file.size / 1024 / 1024).toFixed(2)} MB`,
+      bytes: req.file.size,
+      url: uploadResult.secureUrl,
+      cloudinaryPublicId: uploadResult.publicId,
+      cloudinaryResourceType: uploadResult.resourceType,
+      riskLevel,
+      user: req.user.id
+    });
+
+    await logActivity({
+      userId: req.user.id,
+      action: "file_upload",
+      status: "success",
+      category: "File",
+      riskLevel: riskLevel === "high" ? "Critical" : riskLevel === "medium" ? "Moderate" : "Low",
+      ipAddress: req.ip,
+      meta: {
+        filename: req.file.originalname,
+        cloudinaryUrl: uploadResult.secureUrl
+      }
+    });
+
     let threat = null;
     if (detection.flagged) {
       threat = await createThreatService(detection.threat, req.user.id);
       sendThreatAlert(req.user.id, threat);
     }
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       file: newFile,
       threat
     });
   } catch (err) {
     console.error("[file.routes] upload error:", err);
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 });
 
 router.get("/", protect, async (req, res) => {
   try {
     const files = await File.find({ user: req.user.id }).sort({ createdAt: -1 });
-    res.json({
+    return res.json({
       success: true,
       count: files.length,
       data: files
     });
   } catch (err) {
     console.error("[file.routes] list error:", err);
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 });
 
@@ -99,6 +122,7 @@ router.patch("/:id/rename", protect, async (req, res) => {
     }
 
     file.originalName = name;
+    file.filename = name;
     await file.save();
 
     await logActivity({
@@ -111,10 +135,10 @@ router.patch("/:id/rename", protect, async (req, res) => {
       meta: { fileId: file._id, name }
     });
 
-    res.json({ success: true, file });
+    return res.json({ success: true, file });
   } catch (err) {
     console.error("[file.routes] rename error:", err);
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 });
 
@@ -169,11 +193,20 @@ router.get("/:id/download", protect, async (req, res) => {
       meta: { fileId: file._id }
     });
 
-    const filePath = path.join(uploadDir, file.name);
-    return res.download(filePath, file.originalName);
+    if (file.url) {
+      return res.json({ success: true, url: file.url, file });
+    }
+
+    // Backward compatibility for older local-disk records.
+    const legacyFilePath = path.join(legacyUploadDir, file.name);
+    if (fs.existsSync(legacyFilePath)) {
+      return res.download(legacyFilePath, file.originalName);
+    }
+
+    return res.status(404).json({ msg: "Stored file URL not found" });
   } catch (err) {
     console.error("[file.routes] download error:", err);
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 });
 
@@ -195,9 +228,17 @@ router.delete("/:id", protect, async (req, res) => {
       return res.status(403).json({ msg: "Not allowed" });
     }
 
-    const filePath = path.join(uploadDir, file.name);
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+    if (file.cloudinaryPublicId) {
+      try {
+        await destroyAsset(file.cloudinaryPublicId, file.cloudinaryResourceType || "raw");
+      } catch (cloudErr) {
+        console.warn("[file.routes] Cloudinary delete warning:", cloudErr.message);
+      }
+    } else {
+      const legacyFilePath = path.join(legacyUploadDir, file.name);
+      if (fs.existsSync(legacyFilePath)) {
+        fs.unlinkSync(legacyFilePath);
+      }
     }
 
     await file.deleteOne();
@@ -229,10 +270,10 @@ router.delete("/:id", protect, async (req, res) => {
         meta: { deleteCount }
       });
     }
-    res.json({ success: true, msg: "File deleted" });
+    return res.json({ success: true, msg: "File deleted" });
   } catch (err) {
     console.error("[file.routes] delete error:", err);
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 });
 

@@ -3,9 +3,19 @@ import { validationResult } from "express-validator";
 import { uploadProfileImage } from "../utils/cloudinary.js";
 import { logActivity } from "../services/activity.service.js";
 
+const toSafeUser = (userDoc) => {
+  if (!userDoc) return null;
+  const user = userDoc.toObject ? userDoc.toObject() : userDoc;
+  delete user.password;
+  return {
+    ...user,
+    id: String(user._id || user.id)
+  };
+};
+
 export const getMe = async (req, res) => {
   const user = await User.findById(req.user.id).select("-password");
-  res.json({ success: true, data: user });
+  res.json({ success: true, data: toSafeUser(user) });
 };
 
 export const updateProfile = async (req, res) => {
@@ -21,6 +31,11 @@ export const updateProfile = async (req, res) => {
   });
 
   try {
+    const existingUser = await User.findById(req.user.id);
+    if (!existingUser) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
     if (req.file) {
       const url = await uploadProfileImage(req.file.buffer, `user_${req.user.id}`);
       updates.profilePic = url;
@@ -30,7 +45,7 @@ export const updateProfile = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       req.user.id,
       { $set: updates },
-      { new: true, runValidators: true, select: "-password" }
+      { new: true, runValidators: true }
     );
 
     await logActivity({
@@ -42,7 +57,11 @@ export const updateProfile = async (req, res) => {
       ipAddress: req.ip
     });
 
-    res.json({ success: true, data: user });
+    res.json({
+      success: true,
+      message: "Profile updated successfully",
+      data: toSafeUser(user)
+    });
   } catch (err) {
     console.error("[user.controller] updateProfile error:", err);
     if (err.code === 11000) {

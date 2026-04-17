@@ -1,36 +1,67 @@
+// const mongoose = require("mongoose")
+
+// const userSchema = new mongoose.Schema({
+//     username: {
+//         type : String,
+//         required : [true, "Please enter your full name."],
+//         unique : [true, "Username must be unique"]
+//     },
+//     email : {
+//         type : String,
+//         required : [true, "Please enter an email."],
+//         unique: [true, "Eamil must be unique"],
+//         lowercase : true,
+//         trim: true,
+//     },
+//     password : {
+//         type : String,
+//         required: [true, "Please enter a password"],
+//         minlength : 8,
+//     },
+//     createdAt : {
+//         type : Date,
+//         default: Date.now
+//     }
+// })
+
+// const userModel = mongoose.model("users", userSchema)
+
+// module.exports = userModel
+
+
 import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema({
   username: {
     type: String,
-    required: [true, "Please enter your full name"],
-    unique: true
+    required: [true, "Username is required"],
+    unique: [true, "Username must be unique"],
+    trim: true
   },
   fullName: {
-    type: String
+    type: String,
+    trim: true
   },
   email: {
     type: String,
-    required: true,
-    unique: true
+    required: [true, "User Email is required"],
+    unique: [true, "User Email must be unique"],
+    lowercase: true,
+    trim: true
   },
   password: {
     type: String,
-    required: true
+    required: [true, "Password is required"]
   },
-  avatar: {
-    type: String
-  },
-  profilePic: {
-    type: String
-  },
-  location: {
+  authProvider: {
     type: String,
-    default: ""
+    enum: ["local", "google"],
+    default: "local"
   },
-  bio: {
+  googleId: {
     type: String,
-    default: ""
+    unique: true,
+    sparse: true
   },
   role: {
     type: String,
@@ -53,7 +84,25 @@ const userSchema = new mongoose.Schema({
   },
   lastUserAgent: {
     type: String
+  },
+  profilePic: {
+    type: String
+  },
+  avatar: {
+    type: String
+  },
+  location: {
+    type: String
+  },
+  bio: {
+    type: String
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
   }
-}, { timestamps: true });
+});
 
-export default mongoose.model("User", userSchema);
+const userModel = mongoose.model("users", userSchema);
+
+export default userModel;

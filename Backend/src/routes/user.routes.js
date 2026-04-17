@@ -12,6 +12,7 @@ router.get("/me", protect, getMe);
 router.patch(
   "/me",
   protect,
+  upload.single("profilePic"),
   [
     body("username").optional().notEmpty().withMessage("Username cannot be empty"),
     body("fullName").optional().notEmpty().withMessage("Full name cannot be empty")

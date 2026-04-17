@@ -6,6 +6,9 @@ const fileSchema = new mongoose.Schema(
       type: String,
       required: true
     },
+    filename: {
+      type: String
+    },
     originalName: {
       type: String,
       required: true
@@ -14,9 +17,32 @@ const fileSchema = new mongoose.Schema(
       type: String,
       required: true
     },
+    fileType: {
+      type: String
+    },
+    mimeType: {
+      type: String
+    },
     size: {
       type: String,
       required: true
+    },
+    bytes: {
+      type: Number
+    },
+    url: {
+      type: String
+    },
+    cloudinaryPublicId: {
+      type: String
+    },
+    cloudinaryResourceType: {
+      type: String
+    },
+    riskLevel: {
+      type: String,
+      enum: ["low", "medium", "high"],
+      default: "low"
     },
     user: {
       type: mongoose.Schema.Types.ObjectId,

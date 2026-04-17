@@ -15,9 +15,10 @@ if (!process.env.JWT_SECRET) {
   console.error("[server] JWT_SECRET is missing. Auth tokens will fail.");
 }
 
-const allowedOrigins = process.env.FRONTEND_URL?.split(",") ?? [
-  "http://localhost:5173"
-];
+const allowedOrigins = (process.env.FRONTEND_URL || "http://localhost:5173")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 const server = createServer(app);
 
@@ -84,7 +85,7 @@ mongoose.connection.once("open", () => {
   }
 });
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

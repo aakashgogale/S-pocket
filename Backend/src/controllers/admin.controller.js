@@ -2,6 +2,7 @@ import User from "../models/user.model.js";
 import Activity from "../models/activity.model.js";
 import File from "../models/file.model.js";
 import { hashPassword } from "../utils/hash.js";
+import { destroyAsset } from "../utils/cloudinary.js";
 import { getOnlineUserIds } from "../socket/socket.js";
 import fs from "fs";
 import path from "path";
@@ -55,9 +56,17 @@ export const deleteUser = async (req, res) => {
 
     const files = await File.find({ user: user._id });
     for (const file of files) {
-      const filePath = path.join(uploadDir, file.name);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+      if (file.cloudinaryPublicId) {
+        try {
+          await destroyAsset(file.cloudinaryPublicId, file.cloudinaryResourceType || "raw");
+        } catch (cloudErr) {
+          console.warn("[admin.controller] cloudinary delete warning:", cloudErr.message);
+        }
+      } else {
+        const filePath = path.join(uploadDir, file.name);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
       }
     }
     await File.deleteMany({ user: user._id });
@@ -66,6 +75,36 @@ export const deleteUser = async (req, res) => {
   } catch (err) {
     console.error("[admin.controller] deleteUser error:", err);
     res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+export const listAllFiles = async (req, res) => {
+  try {
+    const files = await File.find().populate("user", "username email fullName role").sort({ createdAt: -1 });
+    res.json({ success: true, data: files });
+  } catch (err) {
+    console.error("[admin.controller] listAllFiles error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+export const setUserRole = async (req, res) => {
+  try {
+    const { role } = req.body;
+    if (!["user", "admin"].includes(role)) {
+      return res.status(400).json({ success: false, message: "Role must be user or admin" });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    user.role = role;
+    await user.save();
+
+    const safeUser = await User.findById(user._id).select("-password");
+    return res.json({ success: true, data: safeUser });
+  } catch (err) {
+    console.error("[admin.controller] setUserRole error:", err);
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 

@@ -41,7 +41,7 @@ export const createThreatController = async (req, res) => {
  */
 export const getThreatsController = async (req, res) => {
   try {
-    const threats = await getThreatsService(req.user.id);
+    const threats = await getThreatsService(req.user.id, req.user.role);
     res.status(200).json({
       success: true,
       count: threats.length,

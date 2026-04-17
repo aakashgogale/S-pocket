@@ -15,6 +15,7 @@ export const createThreatService = async (threatData, userId) => {
 /**
  * Get threats for a user
  */
-export const getThreatsService = async (userId) => {
-  return await Threat.find({ user: userId }).sort({ createdAt: -1 });
+export const getThreatsService = async (userId, role = "user") => {
+  const query = role === "admin" ? {} : { user: userId };
+  return await Threat.find(query).sort({ createdAt: -1 });
 };
