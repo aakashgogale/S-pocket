@@ -1,0 +1,207 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-display: "Bricolage Grotesque", sans-serif;
+    --font-body: "DM Sans", sans-serif;
+    --font-mono: "JetBrains Mono", monospace;
+    --radius: 0.25rem;
+
+    /* Light mode (rarely used — app defaults to dark) */
+    --background: 0.97 0 0;
+    --foreground: 0.1 0 0;
+    --card: 0.99 0 0;
+    --card-foreground: 0.1 0 0;
+    --popover: 0.99 0 0;
+    --popover-foreground: 0.1 0 0;
+
+    --primary: 0.65 0.22 257;
+    --primary-foreground: 0.99 0 0;
+
+    --secondary: 0.93 0 0;
+    --secondary-foreground: 0.2 0 0;
+    --muted: 0.93 0 0;
+    --muted-foreground: 0.48 0 0;
+
+    --accent: 0.65 0.22 257;
+    --accent-foreground: 0.99 0 0;
+
+    --destructive: 0.58 0.24 25;
+    --destructive-foreground: 0.99 0 0;
+
+    --border: 0.88 0 0;
+    --input: 0.88 0 0;
+    --ring: 0.65 0.22 257;
+
+    --chart-1: 0.65 0.22 257;
+    --chart-2: 0.7 0.17 162;
+    --chart-3: 0.77 0.19 70;
+    --chart-4: 0.63 0.27 304;
+    --chart-5: 0.65 0.25 16;
+
+    --sidebar: 0.96 0 0;
+    --sidebar-foreground: 0.1 0 0;
+    --sidebar-primary: 0.65 0.22 257;
+    --sidebar-primary-foreground: 0.99 0 0;
+    --sidebar-accent: 0.92 0 0;
+    --sidebar-accent-foreground: 0.2 0 0;
+    --sidebar-border: 0.88 0 0;
+    --sidebar-ring: 0.65 0.22 257;
+  }
+
+  .dark {
+    /* Deep black enterprise security aesthetic */
+    --background: 0.08 0 0;
+    --foreground: 0.95 0 0;
+    --card: 0.12 0 0;
+    --card-foreground: 0.95 0 0;
+    --popover: 0.14 0 0;
+    --popover-foreground: 0.95 0 0;
+
+    /* Electric cyan primary */
+    --primary: 0.65 0.22 257;
+    --primary-foreground: 0.06 0 0;
+
+    --secondary: 0.16 0 0;
+    --secondary-foreground: 0.85 0 0;
+    --muted: 0.16 0 0;
+    --muted-foreground: 0.52 0 0;
+
+    --accent: 0.65 0.22 257;
+    --accent-foreground: 0.06 0 0;
+
+    --destructive: 0.6 0.25 25;
+    --destructive-foreground: 0.95 0 0;
+
+    --border: 0.2 0 0;
+    --input: 0.2 0 0;
+    --ring: 0.65 0.22 257;
+
+    --chart-1: 0.65 0.22 257;
+    --chart-2: 0.7 0.17 162;
+    --chart-3: 0.77 0.19 70;
+    --chart-4: 0.63 0.27 304;
+    --chart-5: 0.65 0.25 16;
+
+    --sidebar: 0.1 0 0;
+    --sidebar-foreground: 0.95 0 0;
+    --sidebar-primary: 0.65 0.22 257;
+    --sidebar-primary-foreground: 0.06 0 0;
+    --sidebar-accent: 0.16 0 0;
+    --sidebar-accent-foreground: 0.85 0 0;
+    --sidebar-border: 0.2 0 0;
+    --sidebar-ring: 0.65 0.22 257;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("/assets/fonts/BricolageGrotesque.woff2") format("woff2");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "DM Sans";
+  src: url("/assets/fonts/DMSans.woff2") format("woff2");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/assets/fonts/JetBrainsMono.woff2") format("woff2");
+  font-display: swap;
+}
+
+@layer utilities {
+  .transition-smooth {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .transition-fast {
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .shadow-card {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  }
+
+  .shadow-elevated {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  }
+
+  .shadow-glow-cyan {
+    box-shadow: 0 0 24px oklch(0.65 0.22 257 / 0.25);
+  }
+
+  .accent-line {
+    position: relative;
+    border-left: 3px solid oklch(var(--accent));
+    padding-left: 1rem;
+  }
+
+  .font-display {
+    font-family: var(--font-display);
+  }
+
+  .font-body {
+    font-family: var(--font-body);
+  }
+
+  .font-mono {
+    font-family: var(--font-mono);
+  }
+
+  /* Scan-line texture for hero sections */
+  .scanline {
+    background-image: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      oklch(0 0 0 / 0.03) 2px,
+      oklch(0 0 0 / 0.03) 4px
+    );
+  }
+
+  /* Gradient mesh for backgrounds */
+  .mesh-gradient {
+    background: radial-gradient(
+        ellipse 80% 50% at 50% -20%,
+        oklch(0.65 0.22 257 / 0.12),
+        transparent
+      ),
+      radial-gradient(
+        ellipse 60% 40% at 80% 80%,
+        oklch(0.65 0.22 257 / 0.06),
+        transparent
+      );
+  }
+
+  /* Glowing cyan border */
+  .border-glow {
+    border-color: oklch(0.65 0.22 257 / 0.4);
+    box-shadow: 0 0 0 1px oklch(0.65 0.22 257 / 0.15);
+  }
+
+  /* Text gradient for hero headings */
+  .text-gradient-cyan {
+    background: linear-gradient(135deg, oklch(0.95 0 0), oklch(0.65 0.22 257));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
