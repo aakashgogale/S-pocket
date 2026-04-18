@@ -1,108 +1,58 @@
-// const mongoose = require("mongoose")
-
-// const userSchema = new mongoose.Schema({
-//     username: {
-//         type : String,
-//         required : [true, "Please enter your full name."],
-//         unique : [true, "Username must be unique"]
-//     },
-//     email : {
-//         type : String,
-//         required : [true, "Please enter an email."],
-//         unique: [true, "Eamil must be unique"],
-//         lowercase : true,
-//         trim: true,
-//     },
-//     password : {
-//         type : String,
-//         required: [true, "Please enter a password"],
-//         minlength : 8,
-//     },
-//     createdAt : {
-//         type : Date,
-//         default: Date.now
-//     }
-// })
-
-// const userModel = mongoose.model("users", userSchema)
-
-// module.exports = userModel
-
-
 import mongoose from "mongoose";
 
-const userSchema = new mongoose.Schema({
-  username: {
-    type: String,
-    required: [true, "Username is required"],
-    unique: [true, "Username must be unique"],
-    trim: true
+const userSchema = new mongoose.Schema(
+  {
+    fullName: {
+      type: String,
+      required: true,
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+    password: {
+      type: String,
+      required: true,
+    },
   },
-  fullName: {
-    type: String,
-    trim: true
-  },
-  email: {
-    type: String,
-    required: [true, "User Email is required"],
-    unique: [true, "User Email must be unique"],
-    lowercase: true,
-    trim: true
-  },
-  password: {
-    type: String,
-    required: [true, "Password is required"]
-  },
-  authProvider: {
-    type: String,
-    enum: ["local", "google"],
-    default: "local"
-  },
-  googleId: {
-    type: String,
-    unique: true,
-    sparse: true
-  },
-  role: {
-    type: String,
-    enum: ["user", "admin"],
-    default: "user"
-  },
-  isVerified: {
-    type: Boolean,
-    default: false
-  },
-  isBlocked: {
-    type: Boolean,
-    default: false
-  },
-  blockedAt: {
-    type: Date
-  },
-  lastLogin: {
-    type: Date
-  },
-  lastUserAgent: {
-    type: String
-  },
-  profilePic: {
-    type: String
-  },
-  avatar: {
-    type: String
-  },
-  location: {
-    type: String
-  },
-  bio: {
-    type: String
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
+  {
+    timestamps: true,
   }
+);
+
+// 🔐 Security fields (your addition — good)
+userSchema.add({
+  mfaSecret: {
+    type: String,
+    default: null,
+    select: false, // hidden in queries
+  },
+  accessLogs: [
+    {
+      ip: String,
+      endpoint: String,
+      timestamp: { type: Date, default: Date.now },
+      riskScore: { type: Number, default: 0 },
+      userAgent: String,
+    },
+  ],
+  failedLoginAttempts: {
+    type: Number,
+    default: 0,
+  },
+  lockedUntil: {
+    type: Date,
+  },
 });
 
-const userModel = mongoose.model("users", userSchema);
+// 🔒 Optional: helper method (very useful for your project)
+userSchema.methods.isLocked = function () {
+  return this.lockedUntil && this.lockedUntil > Date.now();
+};
 
-export default userModel;
+// 🔥 Create model
+const User = mongoose.model("User", userSchema);
+
+// 🔥 IMPORTANT (fixes your error)
+export default User;

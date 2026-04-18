@@ -1,12 +1,5 @@
-const {Router}= require("express")
-const authController = require("../controllers/auth.controller")
+// ADD THIS import at top
+import { setupMFA } from "../middleware/auth.middleware.js";
 
-                                                                    
-
-const router = Router()
-
-router.post("/register", authController.registerUser)
-
-router.post("/login", authController.loginUser)
-
-module.exports = router
+// ADD THIS route before export
+router.post("/setup-mfa", protect, setupMFA);

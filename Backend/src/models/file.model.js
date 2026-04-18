@@ -2,65 +2,68 @@ import mongoose from "mongoose";
 
 const fileSchema = new mongoose.Schema(
   {
-    name: {
-      type: String,
-      required: true
-    },
     filename: {
-      type: String
+      type: String,
+      required: true,
     },
     originalName: {
       type: String,
-      required: true
-    },
-    type: {
-      type: String,
-      required: true
-    },
-    fileType: {
-      type: String
-    },
-    mimeType: {
-      type: String
-    },
-    size: {
-      type: String,
-      required: true
-    },
-    bytes: {
-      type: Number
+      required: true,
     },
     url: {
-      type: String
-    },
-    cloudinaryPublicId: {
-      type: String
-    },
-    cloudinaryResourceType: {
-      type: String
-    },
-    riskLevel: {
       type: String,
-      enum: ["low", "medium", "high"],
-      default: "low"
+      required: true,
     },
-    user: {
+    uploadedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true
+      required: true,
     },
-    downloadCount: {
+    size: {
       type: Number,
-      default: 0
     },
-    downloadHistory: [
-      {
-        user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-        at: { type: Date, default: Date.now }
-      }
-    ]
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
-export default mongoose.model("File", fileSchema);
+// 🔐 Security features (your addition — very good)
+fileSchema.add({
+  encryptedMetadata: {
+    iv: String,
+    data: String,
+    tag: String,
+  },
+  accessControl: {
+    allowedUsers: [
+      { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    ],
+    expiresAt: Date,
+    public: { type: Boolean, default: false },
+  },
+  securityLogs: [
+    {
+      user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      action: String,
+      ip: String,
+      timestamp: { type: Date, default: Date.now },
+      riskScore: Number,
+    },
+  ],
+});
+
+// 🔒 Helper method (useful for your project)
+fileSchema.methods.isAccessibleBy = function (userId) {
+  if (this.accessControl.public) return true;
+
+  return this.accessControl.allowedUsers.some(
+    (id) => id.toString() === userId.toString()
+  );
+};
+
+// 🔥 Create model
+const File = mongoose.model("File", fileSchema);
+
+// 🔥 IMPORTANT (fixes your error)
+export default File;
